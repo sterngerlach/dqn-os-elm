@@ -1,10 +1,12 @@
 # coding: utf-8
 # dqn-os-elm.py
 
+import argparse
+import random
+
 import numpy as np
 import matplotlib.pyplot as plt
 import gym
-import random
 
 from collections import deque, namedtuple
 
@@ -39,8 +41,10 @@ class DqnOsElmAgent(object):
         self.experience_replay = ExperienceReplayMemory(
             capacity=experience_replay_capacity)
         
-        self.alpha = np.random.random((num_states, num_hidden))
-        self.b = np.random.random(num_hidden)
+        self.alpha = np.random.uniform(
+            low=-1.0, high=1.0, size=(num_states, num_hidden)) * 0.05
+        self.b = np.random.uniform(
+            low=-1.0, high=1.0, size=num_hidden) * 0.05
         self.P = np.zeros((num_hidden, num_hidden))
         self.beta = np.zeros((num_hidden, num_actions))
         
@@ -69,9 +73,10 @@ class DqnOsElmAgent(object):
         # self.P = np.linalg.inv(hidden_outputs.T @ hidden_outputs)
         # self.beta = self.P @ hidden_outputs.T @ expected_state_values
         
-        self.P = np.random.random((self.num_hidden, self.num_hidden))
-        self.beta = np.random.random((self.num_hidden, self.num_actions))
-        
+        self.P = np.random.uniform(
+            low=-1.0, high=1.0, size=(self.num_hidden, self.num_hidden)) * 0.05
+        self.beta = np.random.uniform(
+            low=-1.0, high=1.0, size=(self.num_hidden, self.num_actions)) * 0.05
         
         self.update_target()
         
@@ -145,7 +150,7 @@ class DqnOsElmAgent(object):
     def append_experience(self, state, action, next_state, reward, done):
         self.experience_replay.append(state, action, next_state, reward, done)
         
-    def play(self, env, episode_num=20):
+    def play(self, env, episode_num=5):
         for i in range(episode_num):
             state = env.reset()
             done = False
@@ -163,17 +168,19 @@ class DqnOsElmAgent(object):
                 print("Got reward {}".format(episode_reward))
 
 class DqnOsElmTrainer(object):
-    def __init__(self, env_name, gamma=0.9):
-        self.env = gym.make(env_name)
+    def __init__(self, env, num_hidden=128, initial_epsilon=0.5,
+                 gamma=0.9, capacity=1000):
+        self.env = env
         self.num_states = self.env.observation_space.shape[0]
         self.num_actions = self.env.action_space.n
         
         self.agent = DqnOsElmAgent(num_states=self.num_states,
                                    num_actions=self.num_actions,
-                                   num_hidden=128,
+                                   num_hidden=num_hidden,
                                    batch_size=1,
-                                   initial_epsilon=0.3,
-                                   gamma=gamma)
+                                   initial_epsilon=initial_epsilon,
+                                   gamma=gamma,
+                                   experience_replay_capacity=capacity)
         
     def __del__(self):
         self.env.close()
@@ -184,7 +191,6 @@ class DqnOsElmTrainer(object):
         state = self.env.reset()
         done = False
         
-        # 最初はモンテカルロ法で実行してみる
         while not done:
             action = np.random.randint(self.num_actions)
             next_state, reward, done, info = self.env.step(action)
@@ -231,9 +237,34 @@ class DqnOsElmTrainer(object):
         self.agent.play(self.env)
 
 def main():
-    trainer = DqnOsElmTrainer("CartPole-v0", gamma=0.95)
+    parser = argparse.ArgumentParser(
+        description="Combining OS-ELM and DQN (Deep Q-Network)")
+    
+    parser.add_argument(
+        "--epsilon", help="Initial epsilon value", type=float, default=0.5)
+    parser.add_argument(
+        "--gamma", help="Gamma value", type=float, default=0.9)
+    parser.add_argument(
+        "--experience-replay",
+        help="The capacity of experience replay memory",
+        type=int, default=1000)
+    parser.add_argument(
+        "--hidden-units",
+        help="The number of units in hidden layer",
+        type=int, default=128)
+    parser.add_argument(
+        "--episode-num",
+        help="The number of episodes for training Q-values",
+        type=int, default=200)
+    
+    args = parser.parse_args()
+    
+    env = gym.make("CartPole-v0")
+    
+    trainer = DqnOsElmTrainer(env, args.hidden_units, args.epsilon,
+                              args.gamma, args.experience_replay)
     trainer.initialize()
-    trainer.run()
+    trainer.run(episode_num=args.episode_num)
     trainer.play()
 
 if __name__ == "__main__":
