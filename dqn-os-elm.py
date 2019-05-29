@@ -233,8 +233,8 @@ class DqnOsElmTrainer(object):
                 state = next_state
                 step += 1
                 
-    def play(self):
-        self.agent.play(self.env)
+    def play(self, episode_num=5):
+        self.agent.play(self.env, episode_num)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -246,16 +246,20 @@ def main():
         "--gamma", help="Gamma value", type=float, default=0.9)
     parser.add_argument(
         "--experience-replay",
-        help="The capacity of experience replay memory",
+        help="The capacity of the experience replay memory",
         type=int, default=1000)
     parser.add_argument(
         "--hidden-units",
-        help="The number of units in hidden layer",
+        help="The number of units in the hidden layer",
         type=int, default=128)
     parser.add_argument(
         "--episode-num",
-        help="The number of episodes for training Q-values",
+        help="The number of episodes for training",
         type=int, default=200)
+    parser.add_argument(
+        "--play",
+        help="The number of times to play CartPole using learned Q-values",
+        type=int, default=5)
     
     args = parser.parse_args()
     
